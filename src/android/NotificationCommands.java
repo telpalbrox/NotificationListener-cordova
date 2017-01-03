@@ -1,6 +1,8 @@
 package net.coconauts.notificationListener;
 
-import android.view.Gravity;
+import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.json.JSONArray;
@@ -16,9 +18,6 @@ public class NotificationCommands extends CordovaPlugin {
     private static final String TAG = "NotificationCommands";
 
     private static final String LISTEN = "listen";
-
-    // note that webView.isPaused() is not Xwalk compatible, so tracking it poor-man style
-    private boolean isPaused;
 
     private static CallbackContext listener;
 
@@ -36,16 +35,6 @@ public class NotificationCommands extends CordovaPlugin {
       }
     }
 
-    @Override
-    public void onPause(boolean multitasking) {
-      this.isPaused = true;
-    }
-
-    @Override
-    public void onResume(boolean multitasking) {
-      this.isPaused = false;
-    }
-
     public void setListener(CallbackContext callbackContext) {
       Log.i("Notification", "Attaching callback context listener " + callbackContext);
       listener = callbackContext;
@@ -55,14 +44,14 @@ public class NotificationCommands extends CordovaPlugin {
       callbackContext.sendPluginResult(result);
     }
 
-    public static void notifyListener(StatusBarNotification n){
+    public static void notifyListener(StatusBarNotification n, Context context) {
       if (listener == null) {
         Log.e(TAG, "Must define listener first. Call notificationListener.listen(success,error) first");
         return;
       }
       try  {
 
-        JSONObject json = parse(n);
+        JSONObject json = parse(n, context);
 
         PluginResult result = new PluginResult(PluginResult.Status.OK, json);
 
@@ -71,13 +60,13 @@ public class NotificationCommands extends CordovaPlugin {
 
         listener.sendPluginResult(result);
       } catch (Exception e){
-        Log.e(TAG, "Unable to send notification "+ e);
-        listener.error(TAG+". Unable to send message: "+e.getMessage());
+        Log.e(TAG, "Unable to send notification " + e);
+        listener.error(TAG+". Unable to send message: " + e.getMessage());
       }
     }
 
 
-    private static JSONObject parse(StatusBarNotification n)  throws JSONException{
+    private static JSONObject parse(StatusBarNotification n, Context context)  throws JSONException {
 
         JSONObject json = new JSONObject();
 
@@ -88,10 +77,21 @@ public class NotificationCommands extends CordovaPlugin {
         json.put("text", getExtra(extras,"android.text"));
         json.put("textLines", getExtraLines(extras, "android.textLines"));
 
+        final PackageManager pm = context.getPackageManager();
+        ApplicationInfo ai;
+        try {
+            ai = pm.getApplicationInfo(n.getPackageName(), 0);
+        } catch (final PackageManager.NameNotFoundException e) {
+            ai = null;
+        }
+        final String applicationName = (String) (ai != null ? pm.getApplicationLabel(ai) : "(unknown)");
+
+        json.put("appName", applicationName);
+
         return json;
     }
 
-    private static String getExtraLines(Bundle extras, String extra){
+    private static String getExtraLines(Bundle extras, String extra) {
         try {
             CharSequence[] lines = extras.getCharSequenceArray(extra);
             return lines[lines.length-1].toString();
@@ -100,7 +100,7 @@ public class NotificationCommands extends CordovaPlugin {
             return "";
         }
     }
-    private static String getExtra(Bundle extras, String extra){
+    private static String getExtra(Bundle extras, String extra) {
         try {
             return extras.get(extra).toString();
         } catch( Exception e){

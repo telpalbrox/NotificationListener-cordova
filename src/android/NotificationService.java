@@ -1,14 +1,9 @@
 package net.coconauts.notificationListener;
 
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
-import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
-import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -25,7 +20,7 @@ public class NotificationService extends NotificationListenerService {
 
     private static List<StatusBarNotification> notifications ;
     public static boolean enabled = false;
-    private static Context context ;
+    private static Context context;
 
     @Override
     public void onCreate() {
@@ -50,7 +45,7 @@ public class NotificationService extends NotificationListenerService {
 
         if (pk.equals("android") ||  ignorePkg(pk) || sbn.isOngoing()) Log.d(TAG, "Ignore notification from pkg " + pk);
         else {
-            NotificationCommands.notifyListener(sbn);
+            NotificationCommands.notifyListener(sbn, this);
             addNotification(sbn);
         }
     }
@@ -82,7 +77,7 @@ public class NotificationService extends NotificationListenerService {
 
         int id = n.getId();
         String tag = n.getTag();
-        Log.i("Cancelling notification ", tag + ", " + id);
+        Log.i(TAG, "Cancelling notification " + id + ", tag: " + tag);
         nMgr.cancel(tag, id);
     }
 }
